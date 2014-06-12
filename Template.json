@@ -202,8 +202,8 @@
             "Minimum": 2.0,
             "Maximum": 100.0
         }
-        { % assign fqdnSplit = FQDN | split: '.' -% }
-        { % assign Domain = fqdnSplit [ 0 ] -% }
+        {% assign fqdnSplit = FQDN | split: '.' -%}
+        {% assign Domain = fqdnSplit [ 0 ] -%}
     ],
     "AffinityGroup": {
         "Name": "{{AffinityGroup}}",
