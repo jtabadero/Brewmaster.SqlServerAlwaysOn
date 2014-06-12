@@ -31,7 +31,7 @@
             "Type": "String",
             "TypeHint": "AzureCloudServiceName",
             "Description": "Name of the Azure Cloud Service to which Active Directory VMs are to be deployed. Will be created only if it does not already exists. If it exists then it should lie in the specified affinity group."
-        },        
+        },
         {
             "Name": "FQDN",
             "Type": "String",
@@ -46,7 +46,7 @@
             "TypeHint": "AzureRoleSize",
             "Description": "Size of the Active Directory VMs.",
             "Default": "Small"
-        },        
+        },
         {
             "Name": "SSAOCloudService",
             "Type": "String",
@@ -67,7 +67,7 @@
             "Minimum": 1,
             "Maximum": 32
         },
-		{
+        {
             "Name": "DatabaseName",
             "Type": "String",
             "Description": "Name of the database which is to be added to the SQL Server Availability Group.",
@@ -146,9 +146,64 @@
             "MaskValue": true,
             "Minimum": 1,
             "Maximum": 64
+        },
+        {
+            "Name": "WebCloudService",
+            "Type": "String",
+            "TypeHint": "AzureCloudServiceName",
+            "Description": "Name of the Azure Cloud Service."
+        },
+        {
+            "Name": "WebDiskStore",
+            "Type": "String",
+            "TypeHint": "AzureStorageName",
+            "Description": "Name of Azure disk storage account."
+        },
+        {
+            "Name": "WebVMSize",
+            "Type": "String",
+            "TypeHint": "AzureRoleSize",
+            "Description": "Size of the server VMs.",
+            "Default": "Small"
+        },
+        {
+            "Name": "WebAdminName",
+            "Type": "String",
+            "TypeHint": "username",
+            "Description": "Name of local administrator account.",
+            "Minimum": 1.0,
+            "Maximum": 64.0
+        },
+        {
+            "Name": "WebAdminPassword",
+            "Type": "String",
+            "TypeHint": "password",
+            "Description": "Password of local administrator account.",
+            "MaskValue": true,
+            "Minimum": 8.0,
+            "Maximum": 127.0
+        },
+        {
+            "Name": "ServerNamePrefix",
+            "Type": "String",
+            "Description": "Name prefix for web servers.",
+            "Default": "web",
+            "AllowedRegex": "^[a-zA-Z][a-zA-Z0-9-]{1,13}$",
+            "AllowedDescription": "Must contain 3 to 14 letters, numbers, and hyphens. Must start with a letter."
+        },
+        {
+            "Name": "NumberOfWebServers",
+            "Type": "Number",
+            "TypeHint": "integer",
+            "Description": "Number of web servers.",
+            "Default": "2",
+            "AllowedRegex": "^\\d+$",
+            "AllowedDescription": "Must enter a positive integer between 2 and 100.",
+            "Minimum": 2.0,
+            "Maximum": 100.0
         }
-		{% assign fqdnSplit = FQDN | split: '.' -%}
-		{% assign Domain = fqdnSplit[0] -%}
+        { % assign fqdnSplit = FQDN | split: '.' -% }
+        { % assign Domain = fqdnSplit [ 0 ] -% }
     ],
     "AffinityGroup": {
         "Name": "{{AffinityGroup}}",
@@ -162,15 +217,22 @@
             "Region": "{{Region}}",
             "Description": "A non-georedundant disk store",
             "DisableGeoReplication": true
+        },
+        {
+            "Name": "{{WebDiskStore}}",
+            "AffinityGroup": "{{AffinityGroup}}",
+            "Region": "{{Region}}",
+            "Description": "A georedundant disk store",
+            "DisableGeoReplication": false
         }
-    ],	
+    ],
     "CloudServices": [
         {
             "Name": "{{ADCloudService}}",
             "AffinityGroup": "{{AffinityGroup}}",
             "Region": "{{Region}}",
             "Description": "SSAO AD Setup",
-            "Deployment": {                
+            "Deployment": {
                 "VirtualNetwork": "{{VnetName}}",
                 "VirtualMachines": [
                     {
@@ -246,7 +308,7 @@
             "AffinityGroup": "{{AffinityGroup}}",
             "Region": "{{Region}}",
             "Description": "SQL Server AlwaysOn deployment",
-            "Deployment": {                
+            "Deployment": {
                 "VirtualNetwork": "{{VnetName}}",
                 "VirtualMachines": [
                     {
@@ -283,8 +345,8 @@
                         ],
                         "DeploymentGroup": "SqlAlwaysOn"
                     }
-{% for i in (1..NumberOfSQLNodes) -%}
-                    ,{
+                    { % for i in (1..NumberOfSQLNodes) -% },
+                    {
                         "Name": "sql{{i}}",
                         "RoleSize": "{{SQLVMSize}}",
                         "Subnets": [
@@ -319,14 +381,71 @@
                         ],
                         "DeploymentGroup": "SqlAlwaysOn"
                     }
-{% endfor -%}
+                    { % endfor -% }
                 ],
                 "DiskStorageAccount": "{{DiskStore}}"
+            }
+        },
+        {
+            "Name": "{{WebCloudService}}",
+            "AffinityGroup": "{{AffinityGroup}}",
+            "Region": "{{Region}}",
+            "Description": "My WebFarm cloud service",
+            "VirtualNetwork": "{{VnetName}}",
+            "Deployment": {
+                "VirtualMachines": [
+                    {
+                        "Name": "{{ServerNamePrefix}}1",
+                        "RoleSize": "{{WebVMSize}}",
+                        "Subnets": [
+                            "web-subnet"
+                        ],
+                        "AvailabilitySet": "webfarm-avset",
+                        "OsVirtualDisk": {
+                            "OsType": "Windows",
+                            "OsImageName": "a699494373c04fc0bc8f2bb1389d6106__Windows-Server-2012-R2-*"
+                        },
+                        "WindowsConfigSet": {
+                            "LocalAdminCredentialId": "vmadmin",
+                            "EnableAutomaticUpdates": false,
+                            "ChangePasswordAtLogon": false,
+                            "DisableRdp": false
+                        },
+                        "ConfigSets": [
+                            "WebFarmServer",
+                            "WebDeployPublishServer"
+                        ]
+                    }
+                    { % for i in (2..NumberOfWebServers) -% },
+                    {
+                        "Name": "{{ServerNamePrefix}}{{i}}",
+                        "RoleSize": "{{WebVMSize}}",
+                        "Subnets": [
+                            "web-subnet"
+                        ],
+                        "AvailabilitySet": "webfarm-avset",
+                        "OsVirtualDisk": {
+                            "OsType": "Windows",
+                            "OsImageName": "a699494373c04fc0bc8f2bb1389d6106__Windows-Server-2012-R2-*"
+                        },
+                        "WindowsConfigSet": {
+                            "LocalAdminCredentialId": "vmadmin",
+                            "EnableAutomaticUpdates": false,
+                            "ChangePasswordAtLogon": false,
+                            "DisableRdp": false
+                        },
+                        "ConfigSets": [
+                            "WebFarmServer"
+                        ]
+                    }
+                    { % endfor -% }
+                ],
+                "DiskStorageAccount": "{{WebDiskStore}}"
             }
         }
     ],
     "DeploymentGroups": [
-		{
+        {
             "Name": "ADForest",
             "Description": "Must fully deploy AD forest root before any other domain controllers or domain VMs."
         },
@@ -334,7 +453,7 @@
             "Name": "SqlAlwaysOn",
             "Description": "SQL AlwaysOn VMs."
         },
-		{
+        {
             "Name": "ADDomainController",
             "Description": "Additional AD domain controllers."
         }
@@ -354,13 +473,18 @@
             "Name": "DomainJoinCred",
             "UserName": "{{Domain}}\\{{AdminName}}",
             "Password": "{{AdminPassword}}"
+        },
+        {
+            "Name": "vmadmin",
+            "UserName": "{{WebAdminName}}",
+            "Password": "{{WebAdminPassword}}"
         }
     ],
     "ConfigSets": [
         {
             "Name": "RootDomainController",
             "Description": "Active Directory root DC",
-            "Endpoints": [],
+            "Endpoints": [ ],
             "ConfigurationIds": [
                 "SetupADNode",
                 "SetupADForest"
@@ -369,16 +493,16 @@
         {
             "Name": "DomainController",
             "Description": "Active Directory child DC",
-            "Endpoints": [],
+            "Endpoints": [ ],
             "ConfigurationIds": [
                 "SetupADNode",
                 "SetupADDomainController"
             ]
-        },        
+        },
         {
             "Name": "SSAONode",
             "Description": "All VMs within the SqlAlwaysOn deployment. This is typically made of the SQL nodes and a single quorum node.",
-            "Endpoints": [],
+            "Endpoints": [ ],
             "ConfigurationIds": [
                 "InitializeSSAONode"
             ]
@@ -386,7 +510,7 @@
         {
             "Name": "FailoverCluster",
             "Description": "Failover cluster setup",
-            "Endpoints": [],
+            "Endpoints": [ ],
             "ConfigurationIds": [
                 "SetupFailoverCluster"
             ]
@@ -401,7 +525,7 @@
                     "Protocol": "tcp",
                     "Port": 1433,
                     "EnableDirectServerReturn": true,
-                    "Rules": [],
+                    "Rules": [ ],
                     "LoadBalancerProbe": {
                         "Name": "AGListener-LB",
                         "Protocol": "tcp",
@@ -412,6 +536,61 @@
             "ConfigurationIds": [
                 "SetupSqlAlwaysOn"
             ]
+        },
+        {
+            "Name": "WebFarmServer",
+            "Description": "Web farm server",
+            "Endpoints": [
+                {
+                    "Name": "HTTP",
+                    "LocalPort": 80,
+                    "Protocol": "tcp",
+                    "Port": 80,
+                    "EnableDirectServerReturn": false,
+                    "Rules": [ ],
+                    "LoadBalancerProbe": {
+                        "Name": "http",
+                        "Protocol": "Http",
+                        "Path": "/",
+                        "IntervalInSeconds": 15,
+                        "TimeoutInSeconds": 31
+                    }
+                },
+                {
+                    "Name": "HTTPS",
+                    "LocalPort": 443,
+                    "Protocol": "tcp",
+                    "Port": 443,
+                    "EnableDirectServerReturn": false,
+                    "Rules": [ ],
+                    "LoadBalancerProbe": {
+                        "Name": "https",
+                        "Protocol": "Tcp",
+                        "IntervalInSeconds": 15,
+                        "TimeoutInSeconds": 31
+                    }
+                }
+            ],
+            "ConfigurationIds": [
+                "InstallWebFarm"
+            ]
+        },
+        {
+            "Name": "WebDeployPublishServer",
+            "Description": "Web deploy publish server",
+            "Endpoints": [
+                {
+                    "Name": "WebDeploy",
+                    "LocalPort": 8172,
+                    "Protocol": "tcp",
+                    "Port": 8172,
+                    "EnableDirectServerReturn": false,
+                    "Rules": [ ]
+                }
+            ],
+            "ConfigurationIds": [
+                "SyncWebFarmContent"
+            ]
         }
     ],
     "Configurations": [
@@ -419,7 +598,7 @@
             "Name": "SetupADNode",
             "Description": "Install AD Domain Services, Group Policy Management Console, and DNS.",
             "Resources": [
-				{
+                {
                     "Type": "xFormatDisks",
                     "ImportModule": "xAzureDataDisks",
                     "ImportTypeName": "ADITI_xFormatDisks",
@@ -475,8 +654,8 @@
                         "LogPath": "F:\\NTDS",
                         "SysvolPath": "F:\\SYSVOL"
                     },
-                    "Nodes": [],
-                    "Requires": [],
+                    "Nodes": [ ],
+                    "Requires": [ ],
                     "Description": null
                 },
                 {
@@ -489,7 +668,7 @@
                         "StartupType": "Automatic",
                         "State": "Running"
                     },
-                    "Nodes": [],
+                    "Nodes": [ ],
                     "Requires": [
                         "[Script]SetupForest"
                     ]
@@ -530,13 +709,13 @@
                         "Name": "ADWS",
                         "StartupType": "Automatic",
                         "State": "Running"
-                    },                    
+                    },
                     "Requires": [
                         "[Script]SetupDC"
                     ]
                 }
             ]
-        },        
+        },
         {
             "Name": "InitializeSSAONode",
             "Description": "Initializes VMs in the SqlServerAlwaysOn cloud service",
@@ -724,7 +903,7 @@
                         "{{SSAOCloudService}}.sql1"
                     ]
                 },
-				{
+                {
                     "Type": "xWaitForAzureCluster",
                     "ImportModule": "xAzureFailOverCluster",
                     "ImportTypeName": "ADITI_xWaitForAzureCluster",
@@ -755,7 +934,7 @@
                         "[xWaitForAzureCluster]WaitForFailoverCluster"
                     ]
                 },
-				{
+                {
                     "Type": "xWaitForAzureClusterQuorumShare",
                     "ImportModule": "xAzureFailOverCluster",
                     "ImportTypeName": "ADITI_xWaitForAzureClusterQuorumShare",
@@ -822,7 +1001,7 @@
                         "Direction": "Inbound"
                     }
                 },
-				{
+                {
                     "Type": "xFirewall",
                     "ImportModule": "xNetworking",
                     "ImportTypeName": "MSFT_xFirewall",
@@ -849,7 +1028,7 @@
                     "Args": {
                         "SqlAdminPassword": "{{SqlAdminPassword}}"
                     },
-                    "Nodes": [],
+                    "Nodes": [ ],
                     "Requires": [
                         "[xFirewall]SqlServerTcpInRule",
                         "[xFirewall]SqlServerHAReplicaRule",
@@ -871,7 +1050,7 @@
                         "[Script]ConfigureSqlDbaAccount"
                     ]
                 },
-				{
+                {
                     "Credential": "DomainAdmin:local",
                     "Type": "Script",
                     "ImportModule": null,
@@ -881,8 +1060,8 @@
                     "SetScript": "\r\n$serverPath   = \"SQLSERVER:\\SQL\\$env:COMPUTERNAME\\Default\"\r\n$endpointPath = \"$serverPath\\Endpoints\\$EndpointName\"\r\nNew-SqlHadrEndpoint -Path $serverPath -Name $EndPointName -Port $EndPointPort -EA Stop | Out-Null\r\nWrite-Verbose \"Created Endpoint [$endpointName] on port [$endpointPort]\"\r\nSet-SqlHadrEndpoint -Path $endpointPath -State \"Started\" -EA Continue | Out-Null\r\nWrite-Verbose \"Starting Endpoint [$EndPointName] (if not already started)\"\r\nInvoke-SqlCmd -Query \"GRANT CONNECT ON ENDPOINT::[$EndPointName] TO [$SqlServiceAccount]\" -ServerInstance $env:COMPUTERNAME\r\nWrite-Verbose \"Granting endpoint connect permissions to [$SqlServiceAccount]\"",
                     "TestScript": "$endpoint = OSQL -S $env:COMPUTERNAME -E -Q \"select count(*) from master.sys.endpoints where name = '$EndPointName'\" -h-1\r\nreturn ([bool] [int] $endpoint[0].Trim() )",
                     "Args": {
-						"EndPointName": "MyMirroringEndpoint",
-						"EndPointPort": "%%5022",
+                        "EndPointName": "MyMirroringEndpoint",
+                        "EndPointPort": "%%5022",
                         "SqlServiceAccount": "{{Domain}}\\{{SqlSvcAccountName}}"
                     },
                     "Requires": [
@@ -890,7 +1069,7 @@
                     ],
                     "Description": "Creates SQL Server mirroring endpoint for participating in availability group."
                 },
-				{
+                {
                     "Type": "xSqlHAGroup",
                     "ImportModule": "xAzureAvailabilityGroup",
                     "ImportTypeName": "ADITI_xSqlHAGroup",
@@ -909,7 +1088,7 @@
                         "[Script]CreateSqlAlwaysOnEndpoint"
                     ]
                 },
-				{
+                {
                     "Type": "xWaitForSqlHAGroup",
                     "ImportModule": "xAzureAvailabilityGroup",
                     "ImportTypeName": "ADITI_xWaitForSqlHAGroup",
@@ -957,6 +1136,175 @@
                     ]
                 }
             ]
+        },
+        {
+            "Name": "InstallWebFarm",
+            "Resources": [
+                {
+                    "Type": "Package",
+                    "ImportModule": null,
+                    "ImportTypeName": null,
+                    "Name": "InstallWebPI",
+                    "Args": {
+                        "Credential": "vmadmin",
+                        "Name": "Microsoft Web Platform Installer 4.6",
+                        "ProductId": "16C7D2AD-20CA-491E-80BC-8607A9AACED9",
+                        "Path": "http://download.microsoft.com/download/7/0/4/704CEB4C-9F42-4962-A2B0-5C84B0682C7A/WebPlatformInstaller_amd64_en-US.msi",
+                        "LogPath": "%BrewmasterDir%\\Logs\\WebPlatformInstaller_amd64_en-US.log",
+                        "Ensure": "Present"
+                    },
+                    "Nodes": [ ],
+                    "Requires": [ ],
+                    "Description": null
+                },
+                {
+                    "Type": "WindowsFeature",
+                    "ImportModule": null,
+                    "ImportTypeName": null,
+                    "Name": "InstallASPNET45",
+                    "Args": {
+                        "Name": "NET-Framework-45-ASPNET",
+                        "IncludeAllSubFeature": "true",
+                        "LogPath": "%BrewmasterDir%\\Logs\\Install-ASPNET45.log",
+                        "Ensure": "Present"
+                    },
+                    "Nodes": [ ],
+                    "Requires": [ ],
+                    "Description": null
+                },
+                {
+                    "Type": "WindowsFeature",
+                    "ImportModule": null,
+                    "ImportTypeName": null,
+                    "Name": "InstallIIS",
+                    "Args": {
+                        "Name": "Web-Server",
+                        "IncludeAllSubFeature": "true",
+                        "LogPath": "%BrewmasterDir%\\Logs\\Install-IIS.log",
+                        "Ensure": "Present"
+                    },
+                    "Nodes": [ ],
+                    "Requires": [ ],
+                    "Description": null
+                },
+                {
+                    "Type": "Registry",
+                    "ImportModule": null,
+                    "ImportTypeName": null,
+                    "Name": "EnableRemoteManagement",
+                    "Args": {
+                        "Key": "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\WebManagement\\Server",
+                        "ValueName": "EnableRemoteManagement",
+                        "ValueData": "1",
+                        "ValueType": "Dword",
+                        "Force": "true",
+                        "Ensure": "Present"
+                    },
+                    "Nodes": [ ],
+                    "Requires": [
+                        "[WindowsFeature]InstallIIS",
+                        "[WindowsFeature]InstallASPNET45"
+                    ],
+                    "Description": null
+                },
+                {
+                    "Type": "Service",
+                    "ImportModule": null,
+                    "ImportTypeName": null,
+                    "Name": "StartWebManagementService",
+                    "Args": {
+                        "Name": "wmsvc",
+                        "StartupType": "Automatic",
+                        "State": "Running"
+                    },
+                    "Nodes": [ ],
+                    "Requires": [
+                        "[Registry]EnableRemoteManagement"
+                    ],
+                    "Description": null
+                },
+                {
+                    "Credential": "vmadmin",
+                    "GetScript": "return @{ Installed = Test-Path -LiteralPath \"$env:ProgramFiles\\IIS\\Microsoft Web Deploy V3\\msdeploy.exe\" -PathType Leaf }\r\n",
+                    "SetScript": "$webpicmdexe = \"$env:ProgramFiles\\Microsoft\\Web Platform Installer\\WebPICmd.exe\"\r\n$webpicmdargs = @(\"/Install\", \"/Products:WDeployPS\", \"/AcceptEula\", \"/SuppressReboot\", \"/Log:$env:BrewmasterDir\\Logs\\WebDeploy-Install.log\")\r\nWrite-Verbose \"Installing WebDeploy V3 ($webpicmdexe $webpicmdargs)\" -Verbose\r\nStart-Process -FilePath $webpicmdexe -ArgumentList $webpicmdargs -Wait\r\nif (!(Test-Path -LiteralPath \"$env:ProgramFiles\\IIS\\Microsoft Web Deploy V3\\msdeploy.exe\" -PathType Leaf))\r\n{\r\n    Throw \"$env:ProgramFiles\\IIS\\Microsoft Web Deploy V3\\msdeploy.exe was not installed.\"\r\n}\r\n",
+                    "TestScript": "if (Test-Path -LiteralPath \"$env:ProgramFiles\\IIS\\Microsoft Web Deploy V3\\msdeploy.exe\" -PathType Leaf)\r\n{\r\n    Write-Verbose \"$env:ProgramFiles\\IIS\\Microsoft Web Deploy V3\\msdeploy.exe already exists.\" -Verbose\r\n    return $true\r\n}\r\nreturn $false\r\n",
+                    "Type": "Script",
+                    "ImportModule": null,
+                    "ImportTypeName": null,
+                    "Name": "InstallWebDeploy",
+                    "Args": { },
+                    "Nodes": [ ],
+                    "Requires": [
+                        "[Service]StartWebManagementService",
+                        "[Package]InstallWebPI"
+                    ],
+                    "Description": null
+                },
+                {
+                    "Type": "xFirewall",
+                    "ImportModule": "xNetworking",
+                    "ImportTypeName": "MSFT_xFirewall",
+                    "Name": "OpenWebDeployPort",
+                    "Args": {
+                        "Name": "WebDeploy",
+                        "Description": "WebDeploy (TCP in)",
+                        "LocalPort": "8172",
+                        "Protocol": "TCP",
+                        "Access": "Allow",
+                        "State": "Enabled",
+                        "Direction": "Inbound"
+                    },
+                    "Nodes": [ ],
+                    "Requires": [
+                        "[Script]InstallWebDeploy"
+                    ],
+                    "Description": null
+                }
+            ],
+            "Args": { }
+        },
+        {
+            "Name": "SyncWebFarmContent",
+            "Resources": [
+                {
+                    "Type": "File",
+                    "ImportModule": null,
+                    "ImportTypeName": null,
+                    "Name": "CreateSyncContentScript",
+                    "Args": {
+                        "DestinationPath": "%BrewmasterDir%\\SyncContentNow.ps1",
+                        "Type": "File",
+                        "Ensure": "Present",
+                        "Force": "True",
+                        "Contents": "& \"%BrewmasterTemplateDir%\\Files\\Powershell\\WebDeploySyncContent.ps1\" -WebServers \"{{ServerNamePrefix}}1{% for i in (2..NumberOfWebServers) %} {{ServerNamePrefix}}{{i}}{% endfor %}\"",
+                        "Checksum": "SHA-1"
+                    },
+                    "Nodes": [ ],
+                    "Requires": [ ],
+                    "Description": null
+                },
+                {
+                    "Type": "ScheduledJob",
+                    "ImportModule": "AditiResources",
+                    "ImportTypeName": "Aditi_ScheduledJob",
+                    "Name": "CreateSyncContentTask",
+                    "Args": {
+                        "Name": "Aditi_Brewmaster_WebFarm_ContentSync",
+                        "FilePath": "%BrewmasterDir%\\SyncContentNow.ps1",
+                        "Ensure": "Present",
+                        "At": "%%\"$(Get-Date)\"",
+                        "Once": "true",
+                        "Minutes": "5",
+                        "Credential": "vmadmin"
+                    },
+                    "Nodes": [ ],
+                    "Requires": [
+                        "[File]CreateSyncContentScript"
+                    ],
+                    "Description": null
+                }
+            ],
+            "Args": { }
         }
     ]
 }
