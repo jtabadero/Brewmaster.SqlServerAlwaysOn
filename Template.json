@@ -391,8 +391,8 @@
             "AffinityGroup": "{{AffinityGroup}}",
             "Region": "{{Region}}",
             "Description": "My WebFarm cloud service",
-            "VirtualNetwork": "{{VnetName}}",
             "Deployment": {
+                "VirtualNetwork": "{{VnetName}}",
                 "VirtualMachines": [
                     {
                         "Name": "{{ServerNamePrefix}}1",
