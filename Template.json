@@ -345,7 +345,7 @@
                         ],
                         "DeploymentGroup": "SqlAlwaysOn"
                     }
-                    { % for i in (1..NumberOfSQLNodes) -% },
+                    {% for i in (1..NumberOfSQLNodes) -%},
                     {
                         "Name": "sql{{i}}",
                         "RoleSize": "{{SQLVMSize}}",
@@ -381,7 +381,7 @@
                         ],
                         "DeploymentGroup": "SqlAlwaysOn"
                     }
-                    { % endfor -% }
+                    {% endfor -%}
                 ],
                 "DiskStorageAccount": "{{DiskStore}}"
             }
@@ -416,7 +416,7 @@
                             "WebDeployPublishServer"
                         ]
                     }
-                    { % for i in (2..NumberOfWebServers) -% },
+                    {% for i in (2..NumberOfWebServers) -%},
                     {
                         "Name": "{{ServerNamePrefix}}{{i}}",
                         "RoleSize": "{{WebVMSize}}",
@@ -438,7 +438,7 @@
                             "WebFarmServer"
                         ]
                     }
-                    { % endfor -% }
+                    {% endfor -%}
                 ],
                 "DiskStorageAccount": "{{WebDiskStore}}"
             }
