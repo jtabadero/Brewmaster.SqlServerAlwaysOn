@@ -150,43 +150,6 @@
 		{% assign fqdnSplit = FQDN | split: '.' -%}
 		{% assign Domain = fqdnSplit[0] -%}
     ],
-    "Network": {
-        "DnsServers": [
-            {
-                "Name": "ad-dns1",
-                "IPAddress": "10.0.0.4"
-            },
-            {
-                "Name": "ad-dns2",
-                "IPAddress": "10.0.0.5"
-            }
-        ],
-        "LocalSites": [],
-        "VirtualSites": [
-            {
-                "Name": "{{VnetName}}",
-                "Location": "{{Region}}",
-                "AddressSpace": [
-                    "10.0.0.0/8"
-                ],
-                "Subnets": [
-                    {
-                        "Name": "ad-subnet",
-                        "AddressPrefix": "10.0.0.0/24"
-                    },
-                    {
-                        "Name": "sql-subnet",
-                        "AddressPrefix": "10.20.2.0/24"
-                    }
-                ],
-                "DnsServers": [
-                    "ad-dns1",
-					"ad-dns2"
-                ],
-                "VPNClientAddressSpaces": []
-            }
-        ]
-    },
     "AffinityGroup": {
         "Name": "{{AffinityGroup}}",
         "Region": "{{Region}}",
