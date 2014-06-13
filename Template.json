@@ -223,7 +223,7 @@
             "AffinityGroup": "{{AffinityGroup}}",
             "Region": "{{Region}}",
             "Description": "A georedundant disk store",
-            "DisableGeoReplication": false
+            "DisableGeoReplication": true
         }
     ],
     "CloudServices": [
@@ -361,7 +361,7 @@
                             {
                                 "DiskId": "disk0",
                                 "Lun": 0,
-                                "LogicalSizeInGB": 40
+                                "LogicalSizeInGB": 500
                             }
                         ],
                         "WindowsConfigSet": {
